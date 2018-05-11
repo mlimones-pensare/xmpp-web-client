@@ -1,37 +1,37 @@
 import { Injectable } from '@angular/core';
 import { Client, xml } from '@xmpp/client';
 
+import { StorageService } from './storage.service';
+
 const SERVICE_URL = 'ws://172.17.0.2:7070/ws/';
 
 @Injectable()
 export class XmppService {
   client = null;
-  password = null;
-  username = null;
+  signedIn = false;
+  jid = null;
 
-  constructor() {
+  constructor(private storage: StorageService) {
     this.client = new Client();
-    this.setUpListeners();
-  }
-
-  async signIn(username, password) {
-    this.username = username;
-    this.password = password;
-    this.client.start(SERVICE_URL);
   }
 
   private setUpListeners() {
-    this.client.on('error', err => {
-      console.error('❌', err.toString())
-    })
+  }
+
+  async isSignedIn(){
+    if(!this.signedIn){
+      await this.loadCredentialsAndSignIn();
+    }
+    return this.signedIn;
+  }
+
+  onSuccessfulAuthentication(jid, username, password){
+    this.saveCredentials(username, password);
+    this.jid = jid;
+    this.signedIn = true;
 
     this.client.on('status', (status, value) => {
       console.log('🛈', status, value ? value.toString() : '')
-    });
-
-    this.client.on('online', jid => {
-      console.log('🗸', 'online as', jid.toString())
-      this.client.send(xml('presence'));
     });
 
     this.client.on('stanza', stanza => {
@@ -55,10 +55,51 @@ export class XmppService {
         console.log('⮈', stanza);
       }
     });
-
-    this.client.handle('authenticate', authenticate => {
-      return authenticate(this.username, this.password);
-    });
   }
 
+  saveCredentials(username, password){
+    this.storage.setItem('username', username);
+    this.storage.setItem('password', password);
+  }
+
+  async loadCredentialsAndSignIn() {
+    let credentials = this.loadCredentials();
+    if(credentials){
+      let {username, password} = credentials;
+      return this.signIn(username, password);
+    }else{
+      return {status: 'no credentials exist'};
+    }
+  }
+
+  loadCredentials(){
+    let username = this.storage.getItem('username');
+    let password = this.storage.getItem('password');
+    if((!!username) && (!!password)){
+      return {username, password};
+    }else{
+      return null;
+    }
+  }
+
+  async signIn(username, password) {
+    return new Promise((resolve, reject) => {
+      this.client.on('error', err => {
+        console.error('❌', err.toString())
+        reject(err);
+      })
+
+      this.client.on('online', jid => {
+        this.onSuccessfulAuthentication(jid, username, password);
+        this.client.send(xml('presence'));
+        resolve(jid);
+      });
+
+      this.client.handle('authenticate', authenticate => {
+        return authenticate(username, password);
+      });
+
+      this.client.start(SERVICE_URL);
+    });
+  }
 }

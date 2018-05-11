@@ -1,21 +1,16 @@
-import { Component } from '@angular/core';
-
-import { XmppService } from './xmpp.service'
+import { Component, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent {
-  username='';
-  password='';
+export class AppComponent implements OnInit {
 
-  constructor(private xmpp: XmppService){
+  constructor(){
   }
 
-  async onSubmit(event){
-    let res = await this.xmpp.signIn(this.username, this.password);
-    console.log(res);
-  }
+  async ngOnInit(){
+  } 
+
 }

@@ -37,16 +37,20 @@ export class XmppService {
     this.client.on('stanza', stanza => {
       if(stanza.name === 'message') {
         if(stanza.attrs.type = 'chat') {
+          let from_user = stanza.attrs.from;
           let body = stanza.getChild('body');
           let composing = stanza.getChild('composing');
           let paused = stanza.getChild('paused');
+          let buzz = stanza.getChild('buzz');
           if(body) {
             let message = body.text();
-            console.log('message:', message);
+            console.log(`message from ${from_user}: '${message}'`);
           } else if(composing) {
-            console.log('started writing!');
+            console.log(`${from_user} started writing!`);
           } else if(paused) {
-            console.log('stoped writing!');
+            console.log(`${from_user} stoped writing!`);
+          } else if(buzz) {
+            console.log(`${from_user} sent you a buzz!`);
           } else {
             console.log('⮈', stanza);
           }
